@@ -16,14 +16,14 @@
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; -webkit-tap-highlight-color: transparent; }
     </style>
     <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('Service Worker kayıt başarılı:', reg.scope))
-        .catch(err => console.log('Service Worker kayıt hatası:', err));
-    });
-  }
-</script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker kayıt başarılı:', reg.scope))
+            .catch(err => console.log('Service Worker kayıt hatası:', err));
+        });
+      }
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white pb-safe" id="app-body">
 
@@ -166,7 +166,7 @@
                 </div>
                 <div>
                     <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm sm:text-base">Dosya & Soru Sınav Asistanı</h3>
-                    <p class="text-xs text-slate-400">Diplomasi Kartları (.txt) veya Osmanlı Teşkilatı (.json) dosyası yükle, periyodik olarak test etsin</p>
+                    <p class="text-xs text-slate-400">Dosya yükleyemezseniz aşağıdaki kutuya soruları yazabilir veya yapıştırabilirsiniz.</p>
                 </div>
             </div>
             
@@ -177,12 +177,12 @@
                         <input type="file" id="reminder-file-input" accept=".txt,.json" onchange="handleReminderFileUpload(event)" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-300 hover:file:bg-indigo-100 cursor-pointer">
                     </div>
                     <div id="file-status-badge" class="text-xs px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium">
-                        Herhangi bir dosya seçilmedi
+                        Dosya seçilmedi
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-3">
-                    <textarea id="custom-interval-text" placeholder="Veya buraya alt alta kelimeler / sorular yazabilirsin..." class="w-full h-24 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none">Grekçe diploun fiilinden türetilen kavramın anlamı nedir?	Diplomasi.
+                    <textarea id="custom-interval-text" placeholder="Soruları buraya alt alta yazabilir veya yapıştırabilirsiniz..." class="w-full h-28 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none">Grekçe diploun fiilinden türetilen kavramın anlamı nedir?	Diplomasi.
 Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                     
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -467,6 +467,121 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             localStorage.setItem('habit_journals_v5', JSON.stringify(journals));
         }
 
+        // Dosya ve JSON Okuyucu
+        window.handleReminderFileUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    if (file.name.endsWith('.json') || content.trim().startsWith('[') || content.trim().startsWith('{')) {
+                        const parsed = JSON.parse(content);
+                        if (Array.isArray(parsed)) {
+                            textAreaElem.value = parsed.join('\n');
+                        } else if (parsed.quiz && Array.isArray(parsed.quiz)) {
+                            const formattedLines = [];
+                            parsed.quiz.forEach(q => {
+                                let correctAns = "";
+                                if (q.answerOptions) {
+                                    const correctOpt = q.answerOptions.find(opt => opt.isCorrect);
+                                    if (correctOpt) correctAns = correctOpt.text;
+                                }
+                                formattedLines.push(`${q.question}\t${correctAns}`);
+                            });
+                            textAreaElem.value = formattedLines.join('\n');
+                        } else if (typeof parsed === 'object') {
+                            textAreaElem.value = Object.values(parsed).flat().join('\n');
+                        } else {
+                            textAreaElem.value = content;
+                        }
+                    } else {
+                        textAreaElem.value = content;
+                    }
+                    const linesCount = textAreaElem.value.split('\n').filter(l => l.trim()).length;
+                    document.getElementById('file-status-badge').className = "text-xs px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 font-medium";
+                    document.getElementById('file-status-badge').textContent = `${file.name} yüklendi (${linesCount} satır)`;
+                    showCustomModal("Dosya Yüklendi! 📂", `${file.name} başarıyla içe aktarıldı.`);
+                } catch (err) {
+                    textAreaElem.value = e.target.result;
+                    showCustomModal("Uyarı", "Dosya düz metin olarak aktarıldı.");
+                }
+            };
+            reader.readAsText(file, "UTF-8");
+        }
+
+        // Sınav Asistanı Döngüsü
+        let customIntervalActive = localStorage.getItem('habit_custom_active') === 'true';
+        let customIntervalMinutes = parseInt(localStorage.getItem('habit_custom_mins')) || 10;
+        let customIntervalTimerId = null;
+
+        if (customIntervalActive) {
+            const btn = document.getElementById('custom-interval-btn');
+            btn.innerHTML = `<i class="fa-solid fa-stop"></i> Asistanı Durdur`;
+            btn.className = "w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95";
+            startCustomIntervalLoop();
+        }
+
+        window.toggleCustomIntervalReminder = function() {
+            customIntervalActive = !customIntervalActive;
+            localStorage.setItem('habit_custom_active', customIntervalActive);
+            
+            const txtInput = textAreaElem.value.trim();
+            const minsInput = parseInt(document.getElementById('custom-interval-minutes').value) || 10;
+            
+            if(txtInput) {
+                localStorage.setItem('habit_custom_txt', txtInput);
+            }
+            customIntervalMinutes = minsInput;
+            localStorage.setItem('habit_custom_mins', customIntervalMinutes);
+
+            const btn = document.getElementById('custom-interval-btn');
+            if (customIntervalActive) {
+                btn.innerHTML = `<i class="fa-solid fa-stop"></i> Asistanı Durdur`;
+                btn.className = "w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95";
+                startCustomIntervalLoop();
+                showCustomModal("Asistan Başlatıldı!", `Her ${customIntervalMinutes} dakikada bir sorular/notlar hatırlatılacak.`);
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-play"></i> Sınav Asistanını Başlat`;
+                btn.className = "w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95";
+                if(customIntervalTimerId) clearInterval(customIntervalTimerId);
+                showCustomModal("Asistan Durduruldu", "Periyodik hatırlatıcı kapatıldı.");
+            }
+        }
+
+        function startCustomIntervalLoop() {
+            if(customIntervalTimerId) clearInterval(customIntervalTimerId);
+            const ms = customIntervalMinutes * 60 * 1000;
+            customIntervalTimerId = setInterval(() => {
+                if (customIntervalActive) {
+                    const contentVal = localStorage.getItem('habit_custom_txt') || textAreaElem.value;
+                    const lines = contentVal.split('\n').filter(l => l.trim());
+                    if (lines.length > 0) {
+                        const randomLine = lines[Math.floor(Math.random() * lines.length)];
+                        playReminderSound();
+                        vibrateDevice();
+                        showCustomModal("Sınav Asistanı Hatırlatması 💡", randomLine);
+                    }
+                }
+            }, ms);
+        }
+
+        function playReminderSound() {
+            try {
+                const audioCtx = new (window.webkitAudioContext || window.AudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {}
+        }
+
         window.exportDataJSON = function() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ tasks, streak, journals }, null, 2));
             const downloadAnchor = document.createElement('a');
@@ -526,7 +641,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                         task.subtasks.forEach((sub, sIdx) => {
                             subtasksHtml += `
                                 <div class="flex items-center gap-2 text-xs">
-                                    <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id}, ${sIdx}); vibrateDevice();" class="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer">
+                                    <input type="checkbox" ${sub.done ? 'checked' : ''} onchange="toggleSubtask(${task.id},${sIdx}); vibrateDevice();" class="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer">
                                     <span class="${sub.done ? 'line-through text-slate-400' : 'text-slate-600 dark:text-slate-300'}">${sub.text}</span>
                                 </div>
                             `;
@@ -617,15 +732,4 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             modal.className = "fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4";
             modal.innerHTML = `
                 <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center">
-                    <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">${title}</h3>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">${message}</p>
-                    <button onclick="document.getElementById('custom-modal').remove();" class="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl cursor-pointer">Tamam</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        renderTasks();
-    </script>
-</body>
-</html>
+                    <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb
