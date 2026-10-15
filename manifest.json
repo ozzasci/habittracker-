@@ -3,6 +3,7 @@
   "short_name": "Alışkanlık",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#4f46e5",
   "description": "Gelişmiş Görev ve Alışkanlık Takipçisi Uygulaması",
