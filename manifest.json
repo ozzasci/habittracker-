@@ -1,6 +1,7 @@
 {
   "name": "Alışkanlık ve Yaşam Takipçisi",
   "short_name": "Alışkanlık",
+  "id": "/habittracker-/index.html",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
