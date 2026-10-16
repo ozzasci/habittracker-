@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; -webkit-tap-highlight-color: transparent; }
+        /* Gece Çalışma Modu / Mavi Işık Filtresi Efekti */
+        .night-light-filter { filter: sepia(30%) hue-rotate(-10deg) brightness(95%); }
     </style>
     <script>
       if ('serviceWorker' in navigator) {
@@ -47,6 +49,11 @@
             </div>
             
             <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+                <!-- Gece Modu (Mavi Işık Filtresi) Butonu -->
+                <button onclick="toggleNightLight(); vibrateDevice();" id="night-light-btn" class="bg-indigo-900/40 hover:bg-indigo-900/60 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-indigo-400/20 backdrop-blur-sm cursor-pointer text-amber-300 flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-moon"></i> Gece Filtresi
+                </button>
+
                 <select id="theme-palette-select" onchange="changeThemePalette(this.value); vibrateDevice();" class="bg-indigo-900/40 hover:bg-indigo-900/60 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-indigo-400/20 backdrop-blur-sm cursor-pointer text-white focus:outline-none">
                     <option value="indigo" class="bg-slate-900 text-white">Mor & İndigo</option>
                     <option value="emerald" class="bg-slate-900 text-white">Zümrüt Yeşili</option>
@@ -158,16 +165,22 @@
             </div>
         </div>
 
-        <!-- Custom File / Text Quiz / Interval Assistant -->
+        <!-- Custom File / Text Quiz / Interval Assistant with Text-to-Speech (Sesli Okuma) -->
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 sm:p-6 rounded-2xl shadow-sm mb-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
-                    <i class="fa-solid fa-graduation-cap"></i>
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm sm:text-base">Dosya & Soru Sınav Asistanı</h3>
+                        <p class="text-xs text-slate-400">Periyodik test ve sesli soru okuma asistanı</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm sm:text-base">Dosya & Soru Sınav Asistanı</h3>
-                    <p class="text-xs text-slate-400">Dosya yükleyemezseniz aşağıdaki kutuya soruları yazabilir veya yapıştırabilirsiniz.</p>
-                </div>
+                <!-- Sesli Okuma Butonu -->
+                <button onclick="speakCurrentText(); vibrateDevice();" class="bg-amber-100 dark:bg-amber-950/60 hover:bg-amber-200 text-amber-700 dark:text-amber-300 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-volume-high"></i> Metni Sesli Oku
+                </button>
             </div>
             
             <div class="flex flex-col gap-4">
@@ -292,7 +305,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             </form>
         </div>
 
-        <!-- Task List & Filters -->
+        <!-- Task List & Filters (Konu / Ders Etiket Filtreleri ile Güncellendi) -->
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden mb-6">
             <div class="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h2 class="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -304,6 +317,8 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                     <button onclick="setFilter('İş / Eğitim'); vibrateDevice();" id="filter-İş / Eğitim" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer shrink-0">İş / Eğitim</button>
                     <button onclick="setFilter('Sağlık'); vibrateDevice();" id="filter-Sağlık" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer shrink-0">Sağlık</button>
                     <button onclick="setFilter('Hobi'); vibrateDevice();" id="filter-Hobi" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 transition-colors cursor-pointer shrink-0">Hobi</button>
+                    <!-- Hızlı Konu / Ders Etiket Filtresi -->
+                    <button onclick="setFilter('Tarih'); vibrateDevice();" id="filter-Tarih" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer shrink-0">📚 AUZEF Tarih</button>
                 </div>
             </div>
             
@@ -399,6 +414,28 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             if (navigator.vibrate) { try { navigator.vibrate(30); } catch(e) {} }
         }
 
+        // Gece Çalışma Modu (Mavi Işık Filtresi) Kontrolü
+        let isNightLightOn = localStorage.getItem('habit_night_light') === 'true';
+        applyNightLightState();
+
+        window.toggleNightLight = function() {
+            isNightLightOn = !isNightLightOn;
+            localStorage.setItem('habit_night_light', isNightLightOn);
+            applyNightLightState();
+        }
+
+        function applyNightLightState() {
+            const body = document.getElementById('app-body');
+            const btn = document.getElementById('night-light-btn');
+            if (isNightLightOn) {
+                body.classList.add('night-light-filter');
+                if(btn) btn.className = "bg-amber-600 text-white px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-amber-400/40 backdrop-blur-sm cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-md";
+            } else {
+                body.classList.remove('night-light-filter');
+                if(btn) btn.className = "bg-indigo-900/40 hover:bg-indigo-900/60 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium border border-indigo-400/20 backdrop-blur-sm cursor-pointer text-amber-300 flex items-center gap-1.5 active:scale-95";
+            }
+        }
+
         const palettes = {
             indigo: "from-indigo-600 to-violet-600",
             emerald: "from-emerald-600 to-teal-600",
@@ -465,6 +502,25 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
         window.saveJournal = function() {
             journals[todayStr] = dailyJournalInput.value;
             localStorage.setItem('habit_journals_v5', JSON.stringify(journals));
+        }
+
+        // Sesli Soru / Metin Okuma Fonksiyonu (Text-to-Speech)
+        window.speakCurrentText = function() {
+            const textToRead = textAreaElem.value.trim();
+            if (!textToRead) {
+                showCustomModal("Uyarı", "Okunacak metin bulunamadı!");
+                return;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Önceki okumayı durdur
+                const utterance = new SpeechSynthesisUtterance(textToRead);
+                utterance.lang = 'tr-TR';
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+                showCustomModal("Sesli Asistan 🔊", "Metin sesli olarak okunuyor...");
+            } else {
+                showCustomModal("Desteklenmiyor", "Tarayıcınız sesli okuma özelliğini desteklemiyor.");
+            }
         }
 
         // Akıllı JSON ve Dosya Okuyucu
@@ -696,7 +752,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
 
         function renderTasks() {
             taskContainer.innerHTML = '';
-            const filteredTasks = tasks.filter(t => currentFilter === 'all' || t.category === currentFilter);
+            const filteredTasks = tasks.filter(t => currentFilter === 'all' || t.category === currentFilter || (currentFilter === 'Tarih' && (t.text.toLowerCase().includes('tarih') || t.category === 'İş / Eğitim')));
             if (filteredTasks.length === 0) {
                 emptyState.classList.remove('hidden');
             } else {
