@@ -1,10 +1,9 @@
-const CACHE_NAME = 'habit-tracker-v2';
+const CACHE_NAME = 'habit-tracker-v3';
 const ASSETS_TO_CACHE = [
   './index.html',
   './manifest.json'
 ];
 
-// Service Worker Kurulumu
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -14,7 +13,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Eski Önbellekleri Temizleme
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -30,7 +28,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Ağ İsteklerini Yakalama (Offline Desteği)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
