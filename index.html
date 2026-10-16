@@ -732,4 +732,15 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             modal.className = "fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4";
             modal.innerHTML = `
                 <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center">
-                    <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb
+                    <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">${title}</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">${message}</p>
+                    <button onclick="document.getElementById('custom-modal').remove();" class="w-full bg-indigo-600 text-white font-medium py-3 rounded-xl cursor-pointer">Tamam</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        renderTasks();
+    </script>
+</body>
+</html>
