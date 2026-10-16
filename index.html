@@ -270,7 +270,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             </h2>
             <form id="task-form" class="flex flex-col gap-3">
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <input type="text" id="task-input" placeholder="Örn: 30 dakika kitap oku, kod yaz..." class="flex-grow px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-100" autocomplete="off" required>
+                    <input type="text" id="task-input" placeholder="Örn: 30 dk ders çalış, https://youtube.com/..." class="flex-grow px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm dark:text-slate-100" autocomplete="off" required>
                     <select id="task-category" class="px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium">
                         <option value="Kişisel">Kişisel</option>
                         <option value="İş / Eğitim">İş / Eğitim</option>
@@ -467,7 +467,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             localStorage.setItem('habit_journals_v5', JSON.stringify(journals));
         }
 
-        // Dosya ve JSON Okuyucu
+        // Akıllı JSON ve Dosya Okuyucu
         window.handleReminderFileUpload = function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -477,34 +477,46 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                     const content = e.target.result;
                     if (file.name.endsWith('.json') || content.trim().startsWith('[') || content.trim().startsWith('{')) {
                         const parsed = JSON.parse(content);
+                        let lines = [];
                         if (Array.isArray(parsed)) {
-                            textAreaElem.value = parsed.join('\n');
-                        } else if (parsed.quiz && Array.isArray(parsed.quiz)) {
-                            const formattedLines = [];
-                            parsed.quiz.forEach(q => {
-                                let correctAns = "";
-                                if (q.answerOptions) {
-                                    const correctOpt = q.answerOptions.find(opt => opt.isCorrect);
-                                    if (correctOpt) correctAns = correctOpt.text;
+                            parsed.forEach(item => {
+                                if (typeof item === 'string') lines.push(item);
+                                else if (typeof item === 'object' && item !== null) {
+                                    const q = item.question || item.soru || item.text || item.title || '';
+                                    const a = item.answer || item.cevap || item.description || '';
+                                    if (q && a) lines.push(`${q}\t${a}`);
+                                    else if (q) lines.push(q);
+                                    else lines.push(Object.values(item).join(' - '));
                                 }
-                                formattedLines.push(`${q.question}\t${correctAns}`);
                             });
-                            textAreaElem.value = formattedLines.join('\n');
-                        } else if (typeof parsed === 'object') {
-                            textAreaElem.value = Object.values(parsed).flat().join('\n');
-                        } else {
-                            textAreaElem.value = content;
+                        } else if (typeof parsed === 'object' && parsed !== null) {
+                            if (parsed.quiz && Array.isArray(parsed.quiz)) {
+                                parsed.quiz.forEach(q => {
+                                    let correctAns = "";
+                                    if (q.answerOptions) {
+                                        const correctOpt = q.answerOptions.find(opt => opt.isCorrect);
+                                        if (correctOpt) correctAns = correctOpt.text;
+                                    }
+                                    lines.push(`${q.question || ''}\t${correctAns || q.hint || ''}`);
+                                });
+                            } else {
+                                Object.values(parsed).flat().forEach(val => {
+                                    if (typeof val === 'string') lines.push(val);
+                                    else if (typeof val === 'object' && val !== null) lines.push(Object.values(val).join(' - '));
+                                });
+                            }
                         }
+                        textAreaElem.value = lines.length > 0 ? lines.join('\n') : content;
                     } else {
                         textAreaElem.value = content;
                     }
                     const linesCount = textAreaElem.value.split('\n').filter(l => l.trim()).length;
                     document.getElementById('file-status-badge').className = "text-xs px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 font-medium";
-                    document.getElementById('file-status-badge').textContent = `${file.name} yüklendi (${linesCount} satır)`;
+                    document.getElementById('file-status-badge').textContent = `${file.name} yüklendi (${linesCount} soru/satır)`;
                     showCustomModal("Dosya Yüklendi! 📂", `${file.name} başarıyla içe aktarıldı.`);
                 } catch (err) {
                     textAreaElem.value = e.target.result;
-                    showCustomModal("Uyarı", "Dosya düz metin olarak aktarıldı.");
+                    showCustomModal("Bilgi", "Dosya düz metin olarak aktarıldı.");
                 }
             };
             reader.readAsText(file, "UTF-8");
@@ -566,6 +578,49 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             }, ms);
         }
 
+        // Günlük Alarm Kontrolü ve Hatırlatıcılar
+        let reminderActive = localStorage.getItem('habit_reminder_active') === 'true';
+        let reminderTime = localStorage.getItem('habit_reminder_time') || '20:00';
+        reminderTimeInput.value = reminderTime;
+
+        if (reminderActive) {
+            reminderToggleBtn.innerHTML = `Kapat`;
+            reminderToggleBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer shrink-0 active:scale-95";
+        }
+
+        window.toggleReminderSystem = function() {
+            reminderActive = !reminderActive;
+            localStorage.setItem('habit_reminder_active', reminderActive);
+            reminderTime = reminderTimeInput.value;
+            localStorage.setItem('habit_reminder_time', reminderTime);
+
+            if (reminderActive) {
+                reminderToggleBtn.innerHTML = `Kapat`;
+                reminderToggleBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer shrink-0 active:scale-95";
+                playReminderSound();
+                showCustomModal("Hatırlatıcı Kuruldu!", `Her gün saat ${reminderTime}'de uyarılacaksın.`);
+            } else {
+                reminderToggleBtn.innerHTML = `Aç`;
+                reminderToggleBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer shrink-0 active:scale-95";
+                showCustomModal("Hatırlatıcı Kapatıldı", "Hatırlatıcı devre dışı bırakıldı.");
+            }
+        }
+
+        setInterval(() => {
+            if (reminderActive) {
+                const now = new Date();
+                const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                if (currentTimeStr === reminderTimeInput.value) {
+                    const uncompletedCount = tasks.filter(t => !t.completed).length;
+                    if (uncompletedCount > 0) {
+                        playReminderSound();
+                        vibrateDevice();
+                        showCustomModal("Alarm Zamanı! 🔔", `Bugün bitirmen gereken ${uncompletedCount} görevin var.`);
+                    }
+                }
+            }
+        }, 30000);
+
         function playReminderSound() {
             try {
                 const audioCtx = new (window.webkitAudioContext || window.AudioContext)();
@@ -624,6 +679,21 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
             renderTasks();
         }
 
+        // Metin içindeki linkleri otomatik algılayıp tıklanabilir butona çeviren yardımcı fonksiyon
+        function parseTaskTextWithLinks(text) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            let parts = text.split(urlRegex);
+            let html = '';
+            parts.forEach(part => {
+                if (part.match(urlRegex)) {
+                    html += `<a href="${part}" target="_blank" class="inline-flex items-center gap-1 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 px-2.5 py-1 rounded-lg text-xs font-semibold hover:underline ml-1"><i class="fa-solid fa-play"></i> Videoyu İzle</a>`;
+                } else {
+                    html += part;
+                }
+            });
+            return html;
+        }
+
         function renderTasks() {
             taskContainer.innerHTML = '';
             const filteredTasks = tasks.filter(t => currentFilter === 'all' || t.category === currentFilter);
@@ -649,6 +719,8 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                         subtasksHtml += '</div>';
                     }
 
+                    const formattedText = parseTaskTextWithLinks(task.text);
+
                     taskEl.innerHTML = `
                         <div class="flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3.5 flex-grow min-w-0">
@@ -656,7 +728,7 @@ Küçük adımlar büyük başarıların temelidir.	Motivasyon.</textarea>
                                     <i class="fa-solid fa-check text-xs"></i>
                                 </button>
                                 <div class="flex flex-col min-w-0">
-                                    <span class="text-sm font-medium truncate ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}">${task.text}</span>
+                                    <div class="text-sm font-medium ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'} flex flex-wrap items-center gap-1">${formattedText}</div>
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">${task.priority}</span>
                                         <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">${task.category}</span>
